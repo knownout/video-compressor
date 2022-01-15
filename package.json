@@ -1,6 +1,6 @@
 {
     "name": "video-compressor",
-    "version": "1.0.0",
+    "version": "0.1.0",
     "description": "Simple python3 console program for converting videos to the H.265 codec",
     "author": "re-knownout <re-knownout> knownout@hotmail.com",
     "main": "main.py",

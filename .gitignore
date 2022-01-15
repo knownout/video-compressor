@@ -1,1 +1,5 @@
 venv
+main.spec
+/__pycache__/
+/dist/
+/build/
