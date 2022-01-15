@@ -68,6 +68,20 @@ def sum_array(array: list):
     return total
 
 
+def format_filesize(size: int, suffix="iB"):
+    """
+    Format filesize to human-readable format
+    :param size: file size
+    :param suffix: size suffix
+    :return: str
+    """
+    for unit in ["", "K", "M", "G", "T", "P", "E", "Z"]:
+        if abs(size) < 1024.0:
+            return f"{size:3.1f}{unit}{suffix}"
+        size /= 1024.0
+    return f"{size:.1f}Y{suffix}"
+
+
 def parse_time(seconds: int):
     """
     Convert seconds to TimeData object

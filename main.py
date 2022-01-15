@@ -1,3 +1,4 @@
+import argparse
 import os
 import platform
 import subprocess
@@ -60,13 +61,33 @@ class Main:
         if elapsed == "...":
             print("All files are skipped because they have already been converted")
         else:
+            initial_size = utils.sum_array(list(map(lambda file: os.path.getsize(file), self.files)))
+            resulting_size = 0
+            try:
+                resulting_size = utils.sum_array(list(map(
+                    lambda file: os.path.getsize(file),
+                    map(lambda file: self.output_file_path(file), self.files)
+                )))
+            except FileNotFoundError:
+                pass
+
+            print(utils.format_filesize(initial_size) + " -> " + utils.format_filesize(resulting_size), end="")
+            percents_free = round(100 - (resulting_size * 100 / initial_size), 2)
+
+            print(f", -{percents_free}%")
+
             print(f"Elapsed time: {elapsed}")
 
         exit(0)
 
     def __init__(self):
+        arguments = self.parse_cli_arguments()
+
         # Target directory or file
-        target = input("Conversion target (file or directory): ")
+        if arguments.input:
+            target = arguments.input
+        else:
+            target = input("Conversion target (file or directory): ")
 
         """ Data processing """
 
@@ -91,7 +112,11 @@ class Main:
 
         # Try to read threads count from the user or set default value
         try:
-            value = input(f"Threads limit ({self.threads}): ")
+            if arguments.threads:
+                value = str(arguments.threads)
+            else:
+                value = input(f"Threads limit ({self.threads}): ")
+
             parsed_value = int(value) if len(value.strip()) > 0 else self.threads
             if parsed_value > os.cpu_count():
                 raise ValueError(f"Invalid threads count ({parsed_value}), only {os.cpu_count()} threads available")
@@ -106,21 +131,28 @@ class Main:
 
         if self.threads < os.cpu_count() and self.threads < len(self.files):
             print(f"\n! You have only specified {self.threads} threads to use, but there are {len(self.files)} " +
-                  f"files and your CPU has {os.cpu_count()} threads\n")
+                  f"files and your CPU has {os.cpu_count()} threads")
 
         if self.threads > len(self.files):
             print(f"\n! You have specified to use more threads than files in a directory, " +
-                  f"only {len(self.files)} threads will be used\n")
+                  f"only {len(self.files)} threads will be used")
 
         # Rewrite files output directory
-        rewrite_output = input("Relative path for the output files ( ): ")
+        if arguments.output:
+            rewrite_output = arguments.output
+        else:
+            rewrite_output = input("Relative path for the output files (./): ")
+
         if os.path.isdir(target) and os.path.isdir(os.path.join(target, rewrite_output)):
             self.output = rewrite_output
         else:
             print(f"Invalid relative path, set to default (./)")
 
         # Allow script to remove old output files if exist
-        self.force = input("Force files conversion? (y/n): ").lower() == "y"
+        if arguments.force:
+            self.force = arguments.force
+        else:
+            self.force = input("Force files conversion? (y/n): ").lower() == "y"
 
         """ Data processing (2) """
 
@@ -146,6 +178,18 @@ class Main:
             thread = threading.Thread(target=self.compress, args=(chunk, key))
             self.threads_info[key] = ThreadInfo(thread, f"Thread {key + 1}")
             thread.start()
+
+    @staticmethod
+    def parse_cli_arguments():
+        parser = argparse.ArgumentParser(description="Use CLI options for avoid manual options input")
+        parser.add_argument("--force", metavar="-f", type=bool,
+                            help="Force compress files even if files already has compressed version")
+        parser.add_argument("--input", metavar="-i", type=str, help="Target directory or file")
+        parser.add_argument("--output", metavar="-o", type=str, help="Relative path for compressed files")
+        parser.add_argument("--threads", metavar="-t", type=int, help="Threads count for compression")
+
+        arguments = parser.parse_args()
+        return arguments
 
     def split_files(self):
         """
@@ -173,6 +217,16 @@ class Main:
 
         return chunks
 
+    def output_file_path(self, file: str):
+        """
+        Method for generating output file size based on the input file
+        :param file: input file name
+        :return: str
+        """
+
+        outfile = f"{os.path.splitext(file)[0]}.mkv"
+        return os.path.join(self.output, outfile)
+
     def compress(self, chunk: list[str], thread: int):
         """
         Method for compressing list of the files
@@ -186,7 +240,7 @@ class Main:
             output = FFmpegProcessOutput()
 
             # Output file name
-            outfile = f"{os.path.splitext(file)[0]}.mkv"
+            outfile = self.output_file_path(file)
 
             # Check if output file path exist and delete if allowed
             if os.path.exists(outfile):
@@ -196,7 +250,7 @@ class Main:
                     return
 
             # Compression command
-            command = f"ffmpeg -i {file} -c:v libx265 -vtag hvc1 -c:a copy {os.path.join(self.output, outfile)}"
+            command = f"ffmpeg -i {file} -c:v libx265 -vtag hvc1 -c:a copy {outfile}"
 
             # Compression process
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -234,7 +288,11 @@ class Main:
 
 
 if __name__ == '__main__':
-    main = Main()
+    try:
+        main = Main()
 
-    if time.time() - main.start_time > 1:
-        main.progress.update(100)
+        if time.time() - main.start_time > 1:
+            main.progress.update(100)
+
+    except KeyboardInterrupt:
+        print("\n- Compression process interrupted by user")
