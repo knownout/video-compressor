@@ -1,4 +1,5 @@
 import math
+from typing import Callable
 
 
 class Progress:
@@ -9,9 +10,10 @@ class Progress:
     _tiles: int
     _target: str
     _percents: bool
-    _onfinish: str
 
-    def __init__(self, tiles=20, target="", percents=False, onfinish: str = ""):
+    _callback: Callable
+
+    def __init__(self, tiles=20, target="", percents=False, onfinish: Callable = None):
         self._tiles = tiles
         self._target = target
         self._percents = percents
@@ -41,13 +43,15 @@ class Progress:
 
         self._print("]", "".join(["{:.2f}".format(round(progress, 2)) + "%" if self._percents else "", info]))
 
-        if tiles == self._tiles and len(self._onfinish) > 0:
+        # Check if completed and has callback
+        if tiles == self._tiles and self._callback:
+            # Clean console before next output
             print("\r", end="")
             for i in range(40):
                 self._print(" ")
             print("\r", end="")
 
-            print(self._onfinish, end="")
+            self._callback()
         return self
 
     def show(self, info: str = ""):
@@ -66,9 +70,19 @@ class Progress:
         :param info: progress info
         :return: self
         """
+
+        # Clean console before next output
         print("\r", end="")
         for i in range(40):
             self._print(" ")
         print("\r", end="")
 
         return self._render(progress, info)
+
+    def set_callback(self, callback: Callable):
+        """
+        Method for updating callback (fires when progress get to 100 percents)
+        :param callback: Callable
+        :return:
+        """
+        self._callback = callback

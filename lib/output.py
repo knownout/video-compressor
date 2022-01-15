@@ -2,24 +2,27 @@ import re
 from typing import Type
 
 
-class FfmpegProcessOutput:
+class FFmpegProcessOutput:
     """
     Ffmpeg process output parser
     """
 
     _parser: str
 
-    # Video conversion speed
-    speed: float = 0
+    # Current frame
+    frame: int = 0
 
     # Frames processing count per second
     fps: int = 0
 
-    # Current frame
-    frame: int = 0
+    # Video conversion speed
+    speed: float = 0
 
-    def __init__(self, parser="(frame=\s*\d+(?=\s*fps)|fps=\d+|speed=\d\.?\d*(?=x))"):
+    def __init__(self, parser="(frame=\s*\d+(?=\s*fps)|fps=\s*\d+|speed=\d\.?\d*(?=x))"):
         self._parser = parser
+
+    def get(self):
+        return [self.frame, self.fps, self.speed]
 
     @staticmethod
     def _replace(string: str, tail: str, converter: Type = int):
