@@ -1,0 +1,16 @@
+{
+    "name": "video-compressor",
+    "version": "1.0.0",
+    "description": "Simple python3 console program for converting videos to the H.265 codec",
+    "author": "re-knownout <re-knownout> knownout@hotmail.com",
+    "main": "main.py",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/re-knownout/video-compressor.git"
+    },
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/re-knownout/video-compressor/issues"
+    },
+    "homepage": "https://github.com/re-knownout/video-compressor#readme"
+}
