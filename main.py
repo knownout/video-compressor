@@ -1,4 +1,5 @@
 import os
+import platform
 import subprocess
 import threading
 import time
@@ -21,6 +22,9 @@ class Main:
     # Remove files named like output file if exist
     force: bool = False
 
+    # Compressed files output directory
+    output: str = ""
+
     # Count of the threads to be created
     threads: int = os.cpu_count()
 
@@ -31,6 +35,9 @@ class Main:
 
     # Files info storage
     files_info: dict[str, FileInfo] = {}
+
+    # Blacklisted video file codecs
+    codecs_blacklist = ["hevc"]
 
     """ Internal program data """
 
@@ -45,13 +52,42 @@ class Main:
         Method to be run when all threads have finished compressing files
         :return: None
         """
-        print(f"+ {len(self.files)} file(s) converted")
-        print(f"Elapsed time: {utils.format_time(round(time.time() - self.start_time))}")
-        # exit(0)
+
+        elapsed = utils.format_time(round(time.time() - self.start_time))
+
+        print(f"+ {len(self.files)} file(s) compressed")
+
+        if elapsed == "...":
+            print("All files are skipped because they have already been converted")
+        else:
+            print(f"Elapsed time: {elapsed}")
+
+        exit(0)
 
     def __init__(self):
         # Target directory or file
         target = input("Conversion target (file or directory): ")
+
+        """ Data processing """
+
+        # Callback for utils.files_list function
+        def update_files_info(file: str):
+            info = utils.VideoInfo(file)
+
+            if info.codec in self.codecs_blacklist:
+                return False
+
+            self.files_info[file] = FileInfo()
+            self.frames += info.frames
+            return True
+
+        # Get target path files list
+        self.files = utils.files_list(target, update_files_info)
+
+        # Set default threads count
+        self.threads = self.threads if self.threads <= len(self.files) else len(self.files)
+
+        """ Variables processing (2) """
 
         # Try to read threads count from the user or set default value
         try:
@@ -62,24 +98,31 @@ class Main:
             if parsed_value < 1:
                 raise ValueError(f"Threads count can not be lower than 1")
 
+            self.threads = parsed_value
+
         except ValueError as e:
             print(e)
             print(f"Invalid value for threads limit, set to {self.threads}")
 
+        if self.threads < os.cpu_count() and self.threads < len(self.files):
+            print(f"\n! You have only specified {self.threads} threads to use, but there are {len(self.files)} " +
+                  f"files and your CPU has {os.cpu_count()} threads\n")
+
+        if self.threads > len(self.files):
+            print(f"\n! You have specified to use more threads than files in a directory, " +
+                  f"only {len(self.files)} threads will be used\n")
+
+        # Rewrite files output directory
+        rewrite_output = input("Relative path for the output files ( ): ")
+        if os.path.isdir(target) and os.path.isdir(os.path.join(target, rewrite_output)):
+            self.output = rewrite_output
+        else:
+            print(f"Invalid relative path, set to default (./)")
+
         # Allow script to remove old output files if exist
         self.force = input("Force files conversion? (y/n): ").lower() == "y"
 
-        """ Data processing """
-
-        # Callback for utils.files_list function
-        def update_files_info(file: str):
-            info = utils.VideoInfo(file)
-
-            self.files_info[file] = FileInfo()
-            self.frames += info.frames
-
-        # Get target path files list
-        self.files = utils.files_list(target, update_files_info)
+        """ Data processing (2) """
 
         # Update progress callback
         self.progress.set_callback(self.callback)
@@ -89,6 +132,9 @@ class Main:
 
         # Update compression start time
         self.start_time = time.time()
+
+        print(f"\nCompressing {len(self.files)} file(s) with {self.threads} threads")
+        print(f"CPU: {platform.processor()}")
 
         # Show progress bar
         self.progress.show()
@@ -107,9 +153,6 @@ class Main:
         :return: list[list[str]]
         """
 
-        # Blacklisted video file codecs
-        codecs_blacklist = ["hevc"]
-
         # Chunks list structure
         chunks = [[] for _ in range(self.threads)]
 
@@ -118,7 +161,7 @@ class Main:
 
         for file in self.files:
             info = utils.VideoInfo(file)
-            if info.codec in codecs_blacklist:
+            if info.codec in self.codecs_blacklist:
                 continue
 
             chunks[write_chunk].append(file)
@@ -153,10 +196,11 @@ class Main:
                     return
 
             # Compression command
-            command = f"ffmpeg -i {file} -c:v libx265 -vtag hvc1 -c:a copy {outfile}"
+            command = f"ffmpeg -i {file} -c:v libx265 -vtag hvc1 -c:a copy {os.path.join(self.output, outfile)}"
 
             # Compression process
-            process = subprocess.Popen(command, stdout=subprocess.PIPE, bufsize=1, universal_newlines=True)
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                       bufsize=1, universal_newlines=True)
 
             # Read process stdout
             for line in process.stdout:
@@ -181,10 +225,16 @@ class Main:
                 # Get elapsed time in human-readable format
                 elapsed = utils.format_time(round(time.time() - self.start_time))
 
+                active_threads = len(list(filter(
+                    lambda y: y.is_alive(), map(lambda x: x.thread, self.threads_info.values()))
+                ))
                 # Update progress
                 self.progress.update(percents, f", {frames} of {self.frames} frames, "
-                                     + f"{left} left, {elapsed} elapsed")
+                                     + f"{left} left, {elapsed} elapsed, {active_threads}/{self.threads} threads")
 
 
 if __name__ == '__main__':
-    Main()
+    main = Main()
+
+    if time.time() - main.start_time > 1:
+        main.progress.update(100)

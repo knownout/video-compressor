@@ -13,11 +13,11 @@ class Progress:
 
     _callback: Callable
 
-    def __init__(self, tiles=20, target="", percents=False, onfinish: Callable = None):
+    def __init__(self, tiles=20, target="", percents=False, callback: Callable = None):
         self._tiles = tiles
         self._target = target
         self._percents = percents
-        self._onfinish = onfinish
+        self._callback = callback
 
     @staticmethod
     def _print(*string: str):

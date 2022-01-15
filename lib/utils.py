@@ -27,7 +27,7 @@ class TimeData:
         return [self.hours, self.minutes, self.seconds]
 
 
-def files_list(target: str, callback: Callable[[str], None] = None):
+def files_list(target: str, callback: Callable[[str], bool] = None):
     """
     Function to get a list of files in a specific directory
     :param callback: fires when file added to the list
@@ -48,8 +48,9 @@ def files_list(target: str, callback: Callable[[str], None] = None):
         for file in listdir(target):
             dir_target = path.join(target, file)
             if path.isfile(dir_target):
-                files.append(dir_target)
-                if callback: callback(file)
+                append = True
+                if callback: append = callback(dir_target)
+                if append: files.append(dir_target)
 
     return files
 
@@ -111,7 +112,7 @@ class VideoInfo:
 
     def __init__(self, target: str):
         if not path.exists(target) or not path.isfile(target):
-            raise IOError("Not a file")
+            raise IOError("Video file reading error")
 
         video = cv2.VideoCapture(target)
 
