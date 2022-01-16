@@ -29,6 +29,9 @@ class Main:
     # Count of the threads to be created
     threads: int = os.cpu_count()
 
+    # Files location
+    target: str
+
     """ Thread information storages """
 
     # Threads info storage
@@ -83,11 +86,14 @@ class Main:
     def __init__(self):
         arguments = self.parse_cli_arguments()
 
+        if arguments.no_unicode:
+            self.progress.set_disable_unicode(True)
+
         # Target directory or file
         if arguments.input:
-            target = arguments.input
+            self.target = arguments.input
         else:
-            target = input("Conversion target (file or directory): ")
+            self.target = input("Conversion target (file or directory): ")
 
         """ Data processing """
 
@@ -103,10 +109,10 @@ class Main:
             return True
 
         # Get target path files list
-        self.files = utils.files_list(target, update_files_info)
+        self.files = utils.files_list(self.target, update_files_info)
 
         # Set default threads count
-        self.threads = self.threads if self.threads <= len(self.files) else len(self.files)
+        self.threads = len(self.files) if len(self.files) < self.threads else self.threads
 
         """ Variables processing (2) """
 
@@ -143,14 +149,14 @@ class Main:
         else:
             rewrite_output = input("Relative path for the output files (./): ")
 
-        if os.path.isdir(target) and os.path.isdir(os.path.join(target, rewrite_output)):
+        if os.path.isdir(self.target) and os.path.isdir(os.path.join(self.target, rewrite_output)):
             self.output = rewrite_output
         else:
-            print(f"Invalid relative path, set to default (./)")
+            print(f"Invalid relative path ({os.path.join(self.target, rewrite_output)}), set to default (./)")
 
         # Allow script to remove old output files if exist
         if arguments.force:
-            self.force = arguments.force
+            self.force = arguments.force == "True"
         else:
             self.force = input("Force files conversion? (y/n): ").lower() == "y"
 
@@ -182,11 +188,12 @@ class Main:
     @staticmethod
     def parse_cli_arguments():
         parser = argparse.ArgumentParser(description="Use CLI options for avoid manual options input")
-        parser.add_argument("--force", metavar="-f", type=bool,
+        parser.add_argument("--force", metavar="-f", type=str,
                             help="Force compress files even if files already has compressed version")
         parser.add_argument("--input", metavar="-i", type=str, help="Target directory or file")
         parser.add_argument("--output", metavar="-o", type=str, help="Relative path for compressed files")
         parser.add_argument("--threads", metavar="-t", type=int, help="Threads count for compression")
+        parser.add_argument("--no-unicode", help="Disable unicode symbols for progress", action='store_true')
 
         arguments = parser.parse_args()
         return arguments
@@ -224,8 +231,8 @@ class Main:
         :return: str
         """
 
-        outfile = f"{os.path.splitext(file)[0]}.mkv"
-        return os.path.join(self.output, outfile)
+        outfile = f"{os.path.splitext(os.path.basename(file))[0]}.mkv"
+        return os.path.join(self.target, self.output, outfile)
 
     def compress(self, chunk: list[str], thread: int):
         """
@@ -247,10 +254,10 @@ class Main:
                 if self.force:
                     os.remove(outfile)
                 else:
-                    return
+                    continue
 
             # Compression command
-            command = f"ffmpeg -i {file} -c:v libx265 -vtag hvc1 -c:a copy {outfile}"
+            command = f"ffmpeg -i \"{file}\" -c:v libx265 -vtag hvc1 -c:a copy \"{outfile}\""
 
             # Compression process
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,

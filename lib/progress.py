@@ -7,6 +7,8 @@ class Progress:
     Class for creating simple progress bars
     """
 
+    _disable_unicode: bool
+
     _tiles: int
     _target: str
     _percents: bool
@@ -39,7 +41,8 @@ class Progress:
         self._print("[")
 
         for i in range(self._tiles):
-            print("▪" if i == math.ceil(tiles) else "■" if i < tiles else " ", end="")
+            print(("-" if self._disable_unicode else "▪") if i == math.ceil(tiles) else (
+                "=" if self._disable_unicode else "■") if i < tiles else " ", end="")
 
         self._print("]", "".join(["{:.2f}".format(round(progress, 2)) + "%" if self._percents else "", info]))
 
@@ -47,7 +50,7 @@ class Progress:
         if tiles == self._tiles and self._callback:
             # Clean console before next output
             print("\r", end="")
-            for i in range(40):
+            for i in range(240):
                 self._print(" ")
             print("\r", end="")
 
@@ -73,11 +76,13 @@ class Progress:
 
         # Clean console before next output
         print("\r", end="")
-        for i in range(40):
+        for i in range(240):
             self._print(" ")
         print("\r", end="")
 
-        return self._render(progress, info)
+        self._render(progress, info)
+        print("\r", end="")
+        return self
 
     def set_callback(self, callback: Callable):
         """
@@ -86,3 +91,6 @@ class Progress:
         :return:
         """
         self._callback = callback
+
+    def set_disable_unicode(self, disable_unicode: bool):
+        self._disable_unicode = disable_unicode
