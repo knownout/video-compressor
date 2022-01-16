@@ -41,12 +41,13 @@ speed also increases, however, with each new thread, the percentage drops
 To automate the use of this utility, command line arguments are provided that allow you to disable manual entry of
 specified variables.
 
-| Argument  | Shortcut | Type | Description                                                       |
-|-----------|----------|------|-------------------------------------------------------------------|
-| --force   | -f       | bool | Force compress files even if files already has compressed version |
-| --input   | -i       | str  | Target directory or file                                          |
-| --output  | -o       | str  | Relative path for compressed files                                |
-| --threads | -t       | int  | Threads count for compression                                     |
+| Argument     | Shortcut | Type | Description                                                       |
+|--------------|----------|------|-------------------------------------------------------------------|
+| --force      | -f       | bool | Force compress files even if files already has compressed version |
+| --input      | -i       | str  | Target directory or file                                          |
+| --output     | -o       | str  | Relative path for compressed files                                |
+| --threads    | -t       | int  | Threads count for compression                                     |
+| --no-unicode |          |      | Remove unicode symbols from output                                |
 
 re-knownout - https://github.com/re-knownout/
 <br>knownout@hotmail.com
