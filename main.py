@@ -2,6 +2,7 @@ import argparse
 import os
 import platform
 import subprocess
+import sys
 import threading
 import time
 
@@ -81,7 +82,7 @@ class Main:
 
             print(f"Elapsed time: {elapsed}")
 
-        exit(0)
+        sys.exit(0)
 
     def __init__(self):
         arguments = self.parse_cli_arguments()
